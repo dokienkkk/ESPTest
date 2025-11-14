@@ -1,131 +1,73 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
+  Button,
+  EventSubscription,
+  FlatList,
+  ListRenderItem,
+  Pressable,
   Text,
-  useColorScheme,
   View,
 } from 'react-native';
+import NativeEspModule, {EspDevice} from './specs/NativeEspModule';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const App = () => {
+  // Lắng nghe event từ Telink
+  const espSubscription = useRef<EventSubscription | null>(null);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  const [espDevices, setEspDevices] = useState<Array<EspDevice>>([]);
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+  useEffect(() => {
+    espSubscription.current = NativeEspModule.onPeripheralFound(data => {
+      console.log('onPeripheralFound', data);
+      setEspDevices(prev => [...prev, data]);
+    });
+    return () => {
+      espSubscription.current?.remove();
+      espSubscription.current = null;
+    };
+  }, []);
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  /*
-   * To keep the template simple and small we're adding padding to prevent view
-   * from rendering under the System UI.
-   * For bigger apps the recommendation is to use `react-native-safe-area-context`:
-   * https://github.com/AppAndFlow/react-native-safe-area-context
-   *
-   * You can read more about it here:
-   * https://github.com/react-native-community/discussions-and-proposals/discussions/827
-   */
-  const safePadding = '5%';
+  const renderItem: ListRenderItem<EspDevice> = useCallback(({item}) => {
+    return (
+      <Pressable
+        onPress={() => {
+          NativeEspModule.connectBLEDevice(item.serviceUuid);
+        }}>
+        <Text>{item.deviceName}</Text>
+      </Pressable>
+    );
+  }, []);
 
   return (
-    <View style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <View style={{flex: 1, gap: 12}}>
+      <Button
+        title="Start Scan"
+        onPress={() => {
+          NativeEspModule.startScan();
+        }}
       />
-      <ScrollView
-        style={backgroundStyle}>
-        <View style={{paddingRight: safePadding}}>
-          <Header/>
-        </View>
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            paddingHorizontal: safePadding,
-            paddingBottom: safePadding,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+
+      <Button
+        title="Stop scan"
+        onPress={() => {
+          NativeEspModule.stopScan();
+        }}
+      />
+
+      <Button
+        title="Test Provision"
+        onPress={() => {
+          NativeEspModule.connectWiFi('DigitalR&D', 'DigitalRD@2804');
+        }}
+      />
+
+      <FlatList
+        data={espDevices}
+        renderItem={renderItem}
+        contentContainerStyle={{paddingHorizontal: 12, gap: 12}}
+      />
     </View>
   );
-}
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+};
 
 export default App;

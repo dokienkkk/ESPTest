@@ -9,6 +9,14 @@
     "start": "react-native start",
     "test": "jest"
   },
+  "codegenConfig": {
+    "name": "NativeEspStorageSpec",
+    "type": "modules",
+    "jsSrcsDir": "specs",
+    "android": {
+      "javaPackageName": "com.nativeespmodule"
+    }
+  },
   "dependencies": {
     "react": "19.0.0",
     "react-native": "0.79.6"
